@@ -1,4 +1,3 @@
-'use me'; // Note: Client Component
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -73,11 +72,24 @@ function normalizeHue(h: number): number {
   return (h % 360 + 360) % 360;
 }
 
+// Helper to calculate contrast text color (Black or White) based on lightness
+function getContrastTextColor(hex: string): string {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  // YIQ formula for perceived brightness
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 128 ? '#0f172a' : '#ffffff';
+}
+
 // --- Main UI Component --- //
 
 export default function ColorizeUI() {
   const [hsl, setHsl] = useState<HSL>({ h: 210, s: 80, l: 50 });
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
+  const [activeSchemeTab, setActiveSchemeTab] = useState<'complementary' | 'analogous' | 'splitComplementary'>('complementary');
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDragging = useRef<boolean>(false);
 
@@ -100,6 +112,11 @@ export default function ColorizeUI() {
     hslToHex({ ...hsl, h: normalizeHue(hsl.h + 150) }),
     hslToHex({ ...hsl, h: normalizeHue(hsl.h + 210) }),
   ];
+
+  // Get active scheme array for the Mockup UI preview
+  const currentSchemeColors =
+    activeSchemeTab === 'complementary' ? complementary :
+    activeSchemeTab === 'analogous' ? analogous : splitComplementary;
 
   // --- Draw Color Wheel Canvas --- //
   const drawWheel = useCallback(() => {
@@ -186,6 +203,12 @@ export default function ColorizeUI() {
     setTimeout(() => setCopiedHex(null), 2000);
   };
 
+  // Mockup UI derived colors
+  const primaryColor = currentSchemeColors[0];
+  const secondaryColor = currentSchemeColors[1] || currentSchemeColors[0];
+  const accentColor = currentSchemeColors[2] || primaryColor;
+  const buttonTextColor = getContrastTextColor(primaryColor);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-10">
       {/* Header */}
@@ -194,7 +217,7 @@ export default function ColorizeUI() {
           Colorize
         </h1>
         <p className="text-slate-400">
-          Pick a color on the interactive wheel to explore complementary, analogous, and split-complementary schemes.
+          Pick a color on the interactive wheel to explore harmonies and test them live on a mockup UI card.
         </p>
       </header>
 
@@ -268,34 +291,126 @@ export default function ColorizeUI() {
           </div>
         </div>
 
-        {/* Right: Color Scheme Recommendations */}
+        {/* Right: Color Scheme Recommendations & Live UI Preview */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Complementary */}
-          <SchemeSection
-            title="Complementary"
-            description="Direct opposite on the color wheel. High contrast and vibrant visual tension."
-            colors={complementary}
-            onCopy={copyToClipboard}
-            copiedHex={copiedHex}
-          />
+          {/* Scheme Recommendations Sections */}
+          <div className="space-y-6">
+            <SchemeSection
+              title="Complementary"
+              description="Direct opposite on the color wheel."
+              colors={complementary}
+              onCopy={copyToClipboard}
+              copiedHex={copiedHex}
+            />
 
-          {/* Analogous */}
-          <SchemeSection
-            title="Analogous"
-            description="Adjacent colors on the wheel. Smooth, comfortable, and unified visual harmony."
-            colors={analogous}
-            onCopy={copyToClipboard}
-            copiedHex={copiedHex}
-          />
+            <SchemeSection
+              title="Analogous"
+              description="Adjacent harmonious colors on the wheel."
+              colors={analogous}
+              onCopy={copyToClipboard}
+              copiedHex={copiedHex}
+            />
 
-          {/* Split Complementary */}
-          <SchemeSection
-            title="Split Complementary"
-            description="Base color plus two adjacent colors to its complement. High contrast with less tension."
-            colors={splitComplementary}
-            onCopy={copyToClipboard}
-            copiedHex={copiedHex}
-          />
+            <SchemeSection
+              title="Split Complementary"
+              description="Base color plus two colors adjacent to its complement."
+              colors={splitComplementary}
+              onCopy={copyToClipboard}
+              copiedHex={copiedHex}
+            />
+          </div>
+
+          {/* --- Live Mockup UI Card Implementation Section --- */}
+          <div className="bg-slate-800/60 backdrop-blur border border-slate-700/50 rounded-2xl p-6 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-100">Live Mockup UI Card</h2>
+                <p className="text-xs text-slate-400">See how your colors look applied on a component interface.</p>
+              </div>
+
+              {/* Tabs to select active palette for the preview */}
+              <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs">
+                <button
+                  onClick={() => setActiveSchemeTab('complementary')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                    activeSchemeTab === 'complementary' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Complementary
+                </button>
+                <button
+                  onClick={() => setActiveSchemeTab('analogous')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                    activeSchemeTab === 'analogous' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Analogous
+                </button>
+                <button
+                  onClick={() => setActiveSchemeTab('splitComplementary')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                    activeSchemeTab === 'splitComplementary' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Split-Comp
+                </button>
+              </div>
+            </div>
+
+            {/* Mockup Component Container */}
+            <div className="p-6 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-center">
+              <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden transition-all">
+                {/* Card Header with dynamic accent bar or background tint */}
+                <div
+                  className="p-5 relative overflow-hidden"
+                  style={{ backgroundColor: `${primaryColor}15` }}
+                >
+                  <div
+                    className="absolute top-0 left-0 right-0 h-1.5"
+                    style={{ backgroundColor: primaryColor }}
+                  />
+                  <div className="flex justify-between items-start mb-2">
+                    <span
+                      className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                      style={{ backgroundColor: `${secondaryColor}30`, color: secondaryColor }}
+                    >
+                      Pro Plan
+                    </span>
+                    <span className="text-xs font-mono text-slate-400">Monthly</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Unlimited Suite</h3>
+                  <p className="text-xs text-slate-400 mt-1">Advanced design assets powered by your custom scheme.</p>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-5 space-y-4 border-t border-slate-800/60">
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-extrabold text-white">$29</span>
+                    <span className="text-xs text-slate-400">/ user</span>
+                  </div>
+
+                  <ul className="space-y-2 text-xs text-slate-300">
+                    <li className="flex items-center space-x-2">
+                      <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px]" style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}>✓</span>
+                      <span>Custom color harmonies</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px]" style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}>✓</span>
+                      <span>Instant HEX export</span>
+                    </li>
+                  </ul>
+
+                  {/* Action Button styled using Primary color */}
+                  <button
+                    className="w-full py-2.5 px-4 rounded-xl font-semibold text-sm shadow-md transition-transform active:scale-95"
+                    style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                  >
+                    Get Started Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -331,7 +446,7 @@ function SchemeSection({
             className="group relative flex flex-col items-center p-2 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-slate-600 transition-all text-left overflow-hidden"
           >
             <div
-              className="w-full h-16 rounded-lg mb-2 shadow-inner group-hover:scale-[1.02] transition-transform"
+              className="w-full h-12 rounded-lg mb-2 shadow-inner group-hover:scale-[1.02] transition-transform"
               style={{ backgroundColor: hex }}
             />
             <span className="font-mono text-xs font-semibold text-slate-300 uppercase">
